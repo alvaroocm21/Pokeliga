@@ -1,0 +1,7 @@
+{
+  "appId": "com.pokeliga.app",
+  "appName": "Liga Pokémon",
+  "webDir": "www",
+  "backgroundColor": "#1f1235",
+  "android": { "allowMixedContent": false }
+}

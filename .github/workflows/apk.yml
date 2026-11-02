@@ -1,0 +1,50 @@
+name: Construir APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# si se suben varios cambios seguidos, solo se construye el último (así la release nunca se queda con una versión vieja)
+concurrency:
+  group: apk
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Instalar dependencias
+        run: npm install
+      - name: Crear proyecto Android
+        run: |
+          npm run build
+          npx cap add android
+          npm run android:icons
+          npx cap sync android
+      - name: Compilar APK
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon
+      - name: Guardar APK como artefacto
+        uses: actions/upload-artifact@v4
+        with:
+          name: pokeliga-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+      - name: Publicar en la release «apk-latest»
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp android/app/build/outputs/apk/debug/app-debug.apk LigaPokemon.apk
+          gh release delete apk-latest --cleanup-tag --yes || true
+          gh release create apk-latest LigaPokemon.apk --title "APK más reciente" --notes "APK de depuración generado automáticamente. Descárgalo e instálalo en el móvil." --target "$GITHUB_SHA"
